@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cognified</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;background:#0b0d10;color:#f5f7fa}body{margin:0;min-height:100vh}main{max-width:980px;margin:auto;padding:32px}section{background:#151920;border:1px solid #29313d;border-radius:16px;padding:20px;margin:16px 0}input,textarea,button,select{font:inherit;border-radius:10px;border:1px solid #394455;background:#0f1318;color:#fff;padding:10px}input,textarea{width:100%;box-sizing:border-box;margin:6px 0 12px}textarea{min-height:140px}button{cursor:pointer;margin-right:8px}.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}.metric{display:inline-block;padding:8px 12px;margin:4px;border-radius:999px;background:#202731}.muted{color:#aab4c3}pre{white-space:pre-wrap;word-break:break-word}@media(max-width:700px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Cognified</h1>
+  <p class="muted">Adaptive spatial learning and verified competency runtime.</p>
+
+  <section>
+    <h2>1. Compile a skill</h2>
+    <input id="skillTitle" placeholder="Skill title" value="HTTP Fundamentals" />
+    <input id="sourceTitle" placeholder="Source title" value="Lesson" />
+    <textarea id="sourceText">HTTP is an application protocol used for network communication. First create a request, then send it to a server, and finally inspect the response. Status codes communicate the result of the request.</textarea>
+    <button id="compile">Compile skill</button>
+  </section>
+
+  <section>
+    <h2>2. Start learner session</h2>
+    <div class="row"><input id="learnerId" value="learner-1" /><input id="skillId" placeholder="Compiled skill id" /></div>
+    <button id="start">Start</button><button id="xr">Enter immersive mode</button>
+  </section>
+
+  <section id="experienceSection" hidden>
+    <h2>3. Current experience</h2>
+    <h3 id="objective"></h3><p id="prompt"></p>
+    <div class="row">
+      <select id="kind"><option value="recall">Recall</option><option value="procedure">Procedure</option><option value="transfer">Transfer</option><option value="error-detection">Error detection</option></select>
+      <input id="responseMs" type="number" value="1200" min="0" />
+    </div>
+    <div class="row"><select id="correct"><option value="true">Correct</option><option value="false">Incorrect</option></select><input id="confidence" type="number" value="0.8" min="0" max="1" step="0.05" /></div>
+    <label><input id="assistance" type="checkbox" style="width:auto" /> Assistance used</label><br/><br/>
+    <button id="submit">Submit evidence</button>
+  </section>
+
+  <section>
+    <h2>Competency</h2>
+    <div id="metrics" class="muted">No evidence yet.</div>
+  </section>
+
+  <section><h2>Runtime log</h2><pre id="log"></pre></section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
