@@ -1,19 +1,37 @@
+import { randomUUID } from 'node:crypto';
 import type { Experience, LearningEvent, SkillGraph, SkillNode } from './types.js';
 
 export type LearnerState = {
   learnerId: string;
   skillId: string;
+  activeSessionId: string;
+  sessionStartedAt: string;
+  updatedAt: string;
   mastery: Record<string, number>;
   attempts: Record<string, number>;
 };
 
 export class LearningEngine {
   createState(learnerId: string, graph: SkillGraph): LearnerState {
+    const now = new Date().toISOString();
     return {
       learnerId,
       skillId: graph.id,
+      activeSessionId: randomUUID(),
+      sessionStartedAt: now,
+      updatedAt: now,
       mastery: Object.fromEntries(graph.nodes.map((node) => [node.id, 0])),
       attempts: Object.fromEntries(graph.nodes.map((node) => [node.id, 0])),
+    };
+  }
+
+  beginSession(state: LearnerState): LearnerState {
+    const now = new Date().toISOString();
+    return {
+      ...structuredClone(state),
+      activeSessionId: randomUUID(),
+      sessionStartedAt: now,
+      updatedAt: now,
     };
   }
 
@@ -33,7 +51,7 @@ export class LearningEngine {
     const mode: Experience['mode'] = mastery < 0.2 ? 'explain' : mastery < 0.45 ? 'practice' : mastery < 0.7 ? 'retrieve' : 'transfer';
 
     return {
-      id: `${state.learnerId}-${node.id}-${Date.now()}`,
+      id: `${state.activeSessionId}-${node.id}-${state.attempts[node.id] ?? 0}`,
       nodeId: node.id,
       mode,
       prompt: this.prompt(node, mode),
@@ -54,6 +72,7 @@ export class LearningEngine {
 
     next.mastery[event.nodeId] = Math.max(0, Math.min(1, previous * (1 - alpha) + signal * alpha));
     next.attempts[event.nodeId] = (next.attempts[event.nodeId] ?? 0) + 1;
+    next.updatedAt = event.timestamp;
     return next;
   }
 
