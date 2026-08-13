@@ -4,15 +4,18 @@
   "private": true,
   "type": "module",
   "description": "AI-native spatial learning and verified competency runtime",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": { "cognified": "dist/cli.js" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/cli.js demo",
-    "dev": "node --experimental-strip-types src/cli.ts demo",
-    "test": "npm run build && node --test dist/**/*.test.js"
+    "start": "node dist/cli.js",
+    "serve": "node dist/cli.js serve",
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "test": "npm run build && node --test dist/**/*.test.js",
+    "check": "npm run build && node --test dist/**/*.test.js"
   },
-  "engines": {
-    "node": ">=22.6"
-  },
+  "engines": { "node": ">=22.6" },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.2"
