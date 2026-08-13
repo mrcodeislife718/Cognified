@@ -1,0 +1,20 @@
+{
+  "name": "cognified",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-native spatial learning and verified competency runtime",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli.js demo",
+    "dev": "node --experimental-strip-types src/cli.ts demo",
+    "test": "npm run build && node --test dist/**/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  }
+}
