@@ -26,6 +26,8 @@ export type SkillGraph = {
 };
 
 export type LearningEvent = {
+  id: string;
+  sessionId: string;
   learnerId: string;
   skillId: string;
   nodeId: string;
@@ -42,9 +44,13 @@ export type CompetencyScore = {
   skillId: string;
   overall: number;
   recall: number;
+  recognition: number;
   procedure: number;
   transfer: number;
   errorDetection: number;
+  retention: number;
+  prerequisiteMastery: number;
+  evidenceStrength: number;
   confidenceCalibration: number;
   assistanceDependency: number;
   evidenceCount: number;
