@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readJson, writeJson } from './json-store.js';
 import type { LearningEvent, SkillGraph } from './types.js';
@@ -22,14 +23,37 @@ export class CognifiedRepository {
     return readJson(join(this.root, 'learners', learnerId, `${skillId}.json`), null);
   }
 
-  async appendEvent(event: LearningEvent): Promise<void> {
-    const path = join(this.root, 'events.json');
-    const events = await readJson<LearningEvent[]>(path, []);
-    events.push(event);
-    await writeJson(path, events);
+  async appendEvent(event: LearningEvent): Promise<{ inserted: boolean }> {
+    const path = join(this.root, 'events', `${event.id}.json`);
+    const existing = await readJson<LearningEvent | null>(path, null);
+    if (existing) return { inserted: false };
+
+    await writeJson(path, event);
+    return { inserted: true };
+  }
+
+  async getEvent(id: string): Promise<LearningEvent | null> {
+    return readJson(join(this.root, 'events', `${id}.json`), null);
   }
 
   async getEvents(): Promise<LearningEvent[]> {
-    return readJson(join(this.root, 'events.json'), []);
+    const dir = join(this.root, 'events');
+    let names: string[];
+    try {
+      names = await readdir(dir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw error;
+    }
+
+    const events = await Promise.all(
+      names
+        .filter((name) => name.endsWith('.json'))
+        .map((name) => readJson<LearningEvent | null>(join(dir, name), null)),
+    );
+
+    return events
+      .filter((event): event is LearningEvent => event !== null)
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 }
