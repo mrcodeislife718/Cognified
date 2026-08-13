@@ -5,6 +5,8 @@ import type { LearningEvent, SkillGraph } from './types.js';
 import type { LearnerState } from './learning-engine.js';
 
 export class CognifiedRepository {
+  private eventWriteQueue: Promise<void> = Promise.resolve();
+
   constructor(private readonly root = '.cognified') {}
 
   async saveGraph(graph: SkillGraph): Promise<void> {
@@ -24,12 +26,22 @@ export class CognifiedRepository {
   }
 
   async appendEvent(event: LearningEvent): Promise<{ inserted: boolean }> {
-    const path = join(this.root, 'events', `${event.id}.json`);
-    const existing = await readJson<LearningEvent | null>(path, null);
-    if (existing) return { inserted: false };
+    let result = { inserted: false };
+    const operation = this.eventWriteQueue.then(async () => {
+      const path = join(this.root, 'events', `${event.id}.json`);
+      const existing = await readJson<LearningEvent | null>(path, null);
+      if (existing) {
+        result = { inserted: false };
+        return;
+      }
 
-    await writeJson(path, event);
-    return { inserted: true };
+      await writeJson(path, event);
+      result = { inserted: true };
+    });
+
+    this.eventWriteQueue = operation.then(() => undefined, () => undefined);
+    await operation;
+    return result;
   }
 
   async getEvent(id: string): Promise<LearningEvent | null> {
@@ -37,6 +49,7 @@ export class CognifiedRepository {
   }
 
   async getEvents(): Promise<LearningEvent[]> {
+    await this.eventWriteQueue;
     const dir = join(this.root, 'events');
     let names: string[];
     try {
