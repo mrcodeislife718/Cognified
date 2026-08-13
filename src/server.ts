@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
 import { CognifiedService } from './service.js';
 import type { LearningEvent } from './types.js';
@@ -35,13 +36,8 @@ export function startServer(port = Number(process.env.PORT ?? 8787)) {
     try {
       const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
 
-      if (req.method === 'GET' && url.pathname === '/') {
-        return await sendFile(res, join(webRoot, 'index.html'));
-      }
-
-      if (req.method === 'GET' && url.pathname === '/app.js') {
-        return await sendFile(res, join(webRoot, 'app.js'));
-      }
+      if (req.method === 'GET' && url.pathname === '/') return await sendFile(res, join(webRoot, 'index.html'));
+      if (req.method === 'GET' && url.pathname === '/app.js') return await sendFile(res, join(webRoot, 'app.js'));
 
       if (req.method === 'GET' && url.pathname === '/health') {
         return send(res, 200, { ok: true, service: 'cognified', version: '0.1.0' });
@@ -60,12 +56,13 @@ export function startServer(port = Number(process.env.PORT ?? 8787)) {
 
       if (req.method === 'POST' && url.pathname === '/events') {
         const input = await body(req) as Partial<LearningEvent>;
-        const required = ['learnerId', 'skillId', 'nodeId', 'kind', 'correct', 'responseMs', 'confidence', 'assistanceUsed'] as const;
+        const required = ['sessionId', 'learnerId', 'skillId', 'nodeId', 'kind', 'correct', 'responseMs', 'confidence', 'assistanceUsed'] as const;
         for (const field of required) {
           if (input[field] === undefined) return send(res, 400, { error: `${field} is required` });
         }
         const event: LearningEvent = {
           ...(input as LearningEvent),
+          id: input.id ?? randomUUID(),
           timestamp: input.timestamp ?? new Date().toISOString(),
         };
         return send(res, 200, await service.recordEvent(event));
@@ -86,6 +83,4 @@ export function startServer(port = Number(process.env.PORT ?? 8787)) {
   return server;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  startServer();
-}
+if (import.meta.url === `file://${process.argv[1]}`) startServer();
