@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 let currentExperience = null;
+let currentSessionId = null;
 
 function show(value) {
   $('log').textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -27,9 +28,13 @@ function renderScore(score) {
   const values = [
     ['Overall', score.overall],
     ['Recall', score.recall],
+    ['Recognition', score.recognition],
     ['Procedure', score.procedure],
     ['Transfer', score.transfer],
     ['Error detection', score.errorDetection],
+    ['Retention', score.retention],
+    ['Prerequisite mastery', score.prerequisiteMastery],
+    ['Evidence strength', score.evidenceStrength],
     ['Confidence calibration', score.confidenceCalibration],
     ['Assistance dependency', score.assistanceDependency],
   ];
@@ -61,6 +66,7 @@ $('start').addEventListener('click', async () => {
     const learner = encodeURIComponent($('learnerId').value);
     const skill = encodeURIComponent($('skillId').value);
     const session = await api(`/learners/${learner}/skills/${skill}/session`, { method: 'POST' });
+    currentSessionId = session.sessionId;
     renderExperience(session.experience);
     show(session);
   } catch (error) {
@@ -69,11 +75,13 @@ $('start').addEventListener('click', async () => {
 });
 
 $('submit').addEventListener('click', async () => {
-  if (!currentExperience) return;
+  if (!currentExperience || !currentSessionId) return;
   try {
     const result = await api('/events', {
       method: 'POST',
       body: JSON.stringify({
+        id: crypto.randomUUID(),
+        sessionId: currentSessionId,
         learnerId: $('learnerId').value,
         skillId: $('skillId').value,
         nodeId: currentExperience.nodeId,
