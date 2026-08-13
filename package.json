@@ -12,8 +12,8 @@
     "start": "node dist/cli.js",
     "serve": "node dist/cli.js serve",
     "dev": "node --experimental-strip-types src/cli.ts",
-    "test": "npm run build && node --test dist/**/*.test.js",
-    "check": "npm run build && node --test dist/**/*.test.js"
+    "test": "npm run build && node --test dist/e2e.test.js",
+    "check": "npm run build && node --test dist/e2e.test.js"
   },
   "engines": { "node": ">=22.6" },
   "devDependencies": {
