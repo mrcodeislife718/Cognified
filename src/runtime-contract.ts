@@ -15,27 +15,30 @@ export interface SpatialRuntimeAdapter {
 }
 
 export function observationToEvent(input: {
+  id: string;
+  sessionId: string;
   learnerId: string;
   skillId: string;
   experience: Experience;
   observation: RuntimeObservation;
 }): LearningEvent {
-  const { learnerId, skillId, experience, observation } = input;
-  const kind = experience.mode === 'transfer'
+  const kind = input.experience.mode === 'transfer'
     ? 'transfer'
-    : experience.mode === 'retrieve'
+    : input.experience.mode === 'retrieve'
       ? 'recall'
       : 'procedure';
 
   return {
-    learnerId,
-    skillId,
-    nodeId: experience.nodeId,
+    id: input.id,
+    sessionId: input.sessionId,
+    learnerId: input.learnerId,
+    skillId: input.skillId,
+    nodeId: input.experience.nodeId,
     kind,
-    correct: observation.correct ?? false,
-    responseMs: observation.responseMs ?? 0,
-    confidence: Math.max(0, Math.min(1, observation.confidence ?? 0)),
-    assistanceUsed: observation.assistanceUsed ?? false,
+    correct: input.observation.correct ?? false,
+    responseMs: input.observation.responseMs ?? 0,
+    confidence: Math.max(0, Math.min(1, input.observation.confidence ?? 0)),
+    assistanceUsed: input.observation.assistanceUsed ?? false,
     timestamp: new Date().toISOString(),
   };
 }
