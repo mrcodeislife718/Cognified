@@ -1,8 +1,11 @@
 import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 import { CognifiedService } from './service.js';
 import type { LearningEvent } from './types.js';
 
 const service = new CognifiedService();
+const webRoot = join(process.cwd(), 'apps', 'web');
 
 async function body(req: import('node:http').IncomingMessage) {
   const chunks: Buffer[] = [];
@@ -20,10 +23,25 @@ function send(res: import('node:http').ServerResponse, status: number, value: un
   res.end(payload);
 }
 
+async function sendFile(res: import('node:http').ServerResponse, file: string) {
+  const payload = await readFile(file);
+  const type = extname(file) === '.js' ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8';
+  res.writeHead(200, { 'content-type': type, 'content-length': payload.length });
+  res.end(payload);
+}
+
 export function startServer(port = Number(process.env.PORT ?? 8787)) {
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+
+      if (req.method === 'GET' && url.pathname === '/') {
+        return await sendFile(res, join(webRoot, 'index.html'));
+      }
+
+      if (req.method === 'GET' && url.pathname === '/app.js') {
+        return await sendFile(res, join(webRoot, 'app.js'));
+      }
 
       if (req.method === 'GET' && url.pathname === '/health') {
         return send(res, 200, { ok: true, service: 'cognified', version: '0.1.0' });
