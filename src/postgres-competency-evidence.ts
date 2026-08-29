@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Pool, type PoolClient, type PoolConfig } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import type { CompetencyEvidenceRecord, UnsignedCompetencyEvidence } from './competency-evidence.js';
 
 const stable = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
-  if (value && typeof value === 'object') return `{${Object.entries(value as Record<string, unknown>).sort(([a],[b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${stable(entry)}`).join(',')}}`;
+  if (value && typeof value === 'object') return `{${Object.entries(value as Record<string, unknown>).filter(([,entry]) => entry !== undefined).sort(([a],[b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${stable(entry)}`).join(',')}}`;
   return JSON.stringify(value);
 };
 
@@ -55,9 +55,7 @@ export class PostgresCompetencyEvidenceStore {
     if (input.skillVersion) add('skill_version =', input.skillVersion);
     if (input.primitiveId) add('primitive_id =', input.primitiveId);
     if (input.contextId) add('context_id =', input.contextId);
-    const result = await this.pool.query(
-      `SELECT * FROM cognified_competency_evidence ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''} ORDER BY created_at,id`, values,
-    );
+    const result = await this.pool.query(`SELECT * FROM cognified_competency_evidence ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''} ORDER BY created_at,id`, values);
     return result.rows.map(this.rowToRecord);
   }
 
@@ -80,22 +78,24 @@ export class PostgresCompetencyEvidenceStore {
     if (!Number.isFinite(Date.parse(input.observedAt))) throw new Error('observedAt must be a valid timestamp');
   }
 
-  private rowToRecord = (row: any): CompetencyEvidenceRecord => ({
-    id: row.id,
-    learnerId: row.learner_id,
-    skillId: row.skill_id,
-    skillVersion: row.skill_version,
-    primitiveId: row.primitive_id,
-    assessmentId: row.assessment_id ?? undefined,
-    contextId: row.context_id,
-    runtimeId: row.runtime_id,
-    evidenceClass: row.evidence_class,
-    evidenceArtifactIds: row.evidence_artifact_ids,
-    metrics: row.metrics,
-    observedAt: new Date(row.observed_at).toISOString(),
-    protocolVersion: row.protocol_version,
-    signerId: row.signer_id,
-    previousHash: row.previous_hash,
-    hash: row.hash,
-  });
+  private rowToRecord = (row: any): CompetencyEvidenceRecord => {
+    const base = {
+      id: row.id,
+      learnerId: row.learner_id,
+      skillId: row.skill_id,
+      skillVersion: row.skill_version,
+      primitiveId: row.primitive_id,
+      contextId: row.context_id,
+      runtimeId: row.runtime_id,
+      evidenceClass: row.evidence_class,
+      evidenceArtifactIds: row.evidence_artifact_ids,
+      metrics: row.metrics,
+      observedAt: new Date(row.observed_at).toISOString(),
+      protocolVersion: row.protocol_version,
+      signerId: row.signer_id,
+      previousHash: row.previous_hash,
+      hash: row.hash,
+    } satisfies Omit<CompetencyEvidenceRecord,'assessmentId'>;
+    return row.assessment_id === null ? base : { ...base, assessmentId: row.assessment_id };
+  };
 }
