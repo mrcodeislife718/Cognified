@@ -22,7 +22,16 @@ export type CompetencyEvidenceRecord = {
 
 export type UnsignedCompetencyEvidence = Omit<CompetencyEvidenceRecord, 'id' | 'previousHash' | 'hash'> & { id?: string };
 
-const stable = (value: unknown): string => JSON.stringify(value, Object.keys(value as object).sort());
+const stable = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stable(entry)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+};
 
 export class CompetencyEvidenceStore {
   private readonly records: CompetencyEvidenceRecord[] = [];
