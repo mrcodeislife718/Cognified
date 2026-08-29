@@ -13,13 +13,13 @@ CREATE TABLE IF NOT EXISTS cognified_skills (
 
 CREATE TABLE IF NOT EXISTS cognified_runtime_descriptors (
   runtime_id text PRIMARY KEY,
-  family text NOT NULL CHECK (family IN ('webxr','openxr','mobile','desktop','tool','other')),
+  family text NOT NULL CHECK (family IN ('webxr','openxr','mobile','desktop','instrumented-tool','other')),
   runtime_version text NOT NULL,
   capabilities text[] NOT NULL,
   supported_skill_ir_version_range text NOT NULL,
   observation_schema_version text NOT NULL,
   available boolean NOT NULL,
-  measured_latency_ms double precision NOT NULL CHECK (measured_latency_ms >= 0),
+  measured_latency_ms double precision CHECK (measured_latency_ms IS NULL OR measured_latency_ms >= 0),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
