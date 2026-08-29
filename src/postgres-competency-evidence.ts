@@ -30,13 +30,14 @@ export class PostgresCompetencyEvidenceStore {
       if (duplicate.rowCount) throw new Error(`Duplicate competency evidence id: ${id}`);
       const head = await client.query('SELECT hash FROM cognified_competency_evidence ORDER BY created_at DESC,id DESC LIMIT 1');
       const previousHash = head.rows[0]?.hash ?? 'GENESIS';
-      const base = { ...structuredClone(input), id, previousHash };
+      const observedAt = new Date(input.observedAt).toISOString();
+      const base = { ...structuredClone(input), id, observedAt, previousHash };
       const hash = createHash('sha256').update(stable(base)).digest('hex');
       await client.query(
         `INSERT INTO cognified_competency_evidence
          (id,learner_id,skill_id,skill_version,primitive_id,assessment_id,context_id,runtime_id,evidence_class,evidence_artifact_ids,metrics,observed_at,protocol_version,signer_id,previous_hash,hash)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::text[],$11::jsonb,$12,$13,$14,$15,$16)`,
-        [id,input.learnerId,input.skillId,input.skillVersion,input.primitiveId,input.assessmentId ?? null,input.contextId,input.runtimeId,input.evidenceClass,input.evidenceArtifactIds,JSON.stringify(input.metrics),input.observedAt,input.protocolVersion,input.signerId,previousHash,hash],
+        [id,input.learnerId,input.skillId,input.skillVersion,input.primitiveId,input.assessmentId ?? null,input.contextId,input.runtimeId,input.evidenceClass,input.evidenceArtifactIds,JSON.stringify(input.metrics),observedAt,input.protocolVersion,input.signerId,previousHash,hash],
       );
       await client.query('COMMIT');
       return { ...base, hash };
