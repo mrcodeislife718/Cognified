@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AI-native spatial learning and verified competency runtime",
+  "description": "AI-native spatial and embodied learning runtime for verified cognitive and motor competency",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": { "cognified": "dist/cli.js" },
@@ -12,8 +12,8 @@
     "start": "node dist/cli.js",
     "serve": "node dist/cli.js serve",
     "dev": "node --experimental-strip-types src/cli.ts",
-    "test": "npm run build && node --test dist/e2e.test.js",
-    "check": "npm run build && node --test dist/e2e.test.js"
+    "test": "npm run build && node --test dist/*.test.js",
+    "check": "npm test"
   },
   "engines": { "node": ">=22.6" },
   "devDependencies": {
