@@ -26,6 +26,7 @@ const stable = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
   if (value && typeof value === 'object') {
     return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, entry]) => `${JSON.stringify(key)}:${stable(entry)}`)
       .join(',')}}`;
@@ -49,7 +50,8 @@ export class CompetencyEvidenceStore {
     const id = input.id ?? randomUUID();
     if (this.ids.has(id)) throw new Error(`Duplicate competency evidence id: ${id}`);
     const previousHash = this.records.at(-1)?.hash ?? 'GENESIS';
-    const base = { ...structuredClone(input), id, previousHash };
+    const observedAt = new Date(input.observedAt).toISOString();
+    const base = { ...structuredClone(input), id, observedAt, previousHash };
     const hash = createHash('sha256').update(stable(base)).digest('hex');
     const record: CompetencyEvidenceRecord = { ...base, hash };
     this.records.push(record);
