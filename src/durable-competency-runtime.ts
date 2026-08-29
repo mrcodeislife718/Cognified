@@ -89,7 +89,7 @@ export class DurableCognifiedCompetencyRuntime {
   }
 
   async acceptEvidenceAttestation(recordId: string, attestation: EvidenceAttestation): Promise<EvidenceAttestation> {
-    const [record] = await this.evidenceByIds([recordId]);
+    const record = await this.evidence.require(recordId);
     const registry = await this.attestationRegistry();
     registry.accept(record,attestation);
     return this.state.persistAttestation(attestation);
@@ -136,16 +136,5 @@ export class DurableCognifiedCompetencyRuntime {
     const registry = new CompetencyEvidenceAttestationRegistry();
     for (const key of await this.state.listEvidenceKeys()) registry.registerKey(key);
     return registry;
-  }
-
-  private async evidenceByIds(ids: string[]): Promise<CompetencyEvidenceRecord[]> {
-    if (!ids.length) return [];
-    const all = await this.evidence.query({});
-    const byId = new Map(all.map((record) => [record.id,record]));
-    return ids.map((id) => {
-      const record=byId.get(id);
-      if (!record) throw new Error(`Unknown competency evidence: ${id}`);
-      return record;
-    });
   }
 }
