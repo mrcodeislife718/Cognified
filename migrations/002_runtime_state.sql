@@ -63,13 +63,29 @@ CREATE TABLE IF NOT EXISTS cognified_evidence_keys (
 );
 CREATE INDEX IF NOT EXISTS cognified_evidence_keys_signer_idx ON cognified_evidence_keys(signer_id,status,valid_from);
 
+CREATE TABLE IF NOT EXISTS cognified_evidence_attestations (
+  record_id uuid PRIMARY KEY REFERENCES cognified_competency_evidence(id) ON DELETE RESTRICT,
+  record_hash text NOT NULL,
+  signer_id text NOT NULL,
+  key_id text NOT NULL REFERENCES cognified_evidence_keys(key_id) ON DELETE RESTRICT,
+  algorithm text NOT NULL CHECK (algorithm='Ed25519'),
+  signed_at timestamptz NOT NULL,
+  signature_base64 text NOT NULL,
+  accepted_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS cognified_attestations_signer_idx ON cognified_evidence_attestations(signer_id,signed_at);
+
 CREATE TABLE IF NOT EXISTS cognified_practice_decisions (
   id uuid PRIMARY KEY,
   session_id text NOT NULL REFERENCES cognified_sessions(session_id) ON DELETE RESTRICT,
   primitive_id text NOT NULL,
   challenge_id text NOT NULL,
-  expected_gain double precision NOT NULL,
-  safety_score double precision NOT NULL,
+  score double precision NOT NULL,
+  expected_learning_gain double precision NOT NULL,
+  challenge_gap double precision NOT NULL,
+  uncertainty_bonus double precision NOT NULL,
+  safety_penalty double precision NOT NULL,
+  fatigue_penalty double precision NOT NULL,
   decision_payload jsonb NOT NULL,
   decided_at timestamptz NOT NULL DEFAULT now()
 );
@@ -82,11 +98,13 @@ CREATE TABLE IF NOT EXISTS cognified_certificates (
   skill_version text NOT NULL,
   assessment_id text NOT NULL,
   status text NOT NULL CHECK (status IN ('verified','insufficient-evidence')),
+  fingerprint text NOT NULL UNIQUE,
   certificate_payload jsonb NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
+  issued_at timestamptz NOT NULL,
   valid_until timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
   FOREIGN KEY (skill_id, skill_version) REFERENCES cognified_skills(skill_id,skill_version) ON DELETE RESTRICT
 );
-CREATE INDEX IF NOT EXISTS cognified_certificates_lookup_idx ON cognified_certificates(learner_id,skill_id,skill_version,assessment_id,created_at);
+CREATE INDEX IF NOT EXISTS cognified_certificates_lookup_idx ON cognified_certificates(learner_id,skill_id,skill_version,assessment_id,issued_at);
 
 COMMIT;
