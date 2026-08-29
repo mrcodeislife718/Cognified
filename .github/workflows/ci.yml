@@ -14,6 +14,22 @@ jobs:
     strategy:
       matrix:
         node-version: [22, 24]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cognified
+          POSTGRES_PASSWORD: cognified
+          POSTGRES_DB: cognified_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cognified -d cognified_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://cognified:cognified@127.0.0.1:5432/cognified_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
