@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CognifiedCompetencyRuntime } from './competency-runtime.js';
@@ -25,6 +26,14 @@ test('Cognified runtime carries a versioned skill from runtime selection through
   runtime.observeLearning(session.id, { primitiveId: 'p2', correctness: 0.9, speedScore: 0.8, varianceScore: 0.9, assistanceUsed: 0.1, confidence: 0.85, retentionEvidence: 0.8, transferEvidence: 0.8, automaticityEvidence: 0.7, evidenceReliability: 0.95, observedAt: '2026-08-29T14:00:00Z' });
   const baseline = runtime.recordCompetencyEvidence(session.id, { primitiveId: 'p2', assessmentId: 'assessment:1', contextId: 'ctx:baseline', evidenceClass: 'behavioral', evidenceArtifactIds: ['artifact:baseline'], metrics: { performance: 0.9 }, observedAt: '2026-08-30T14:00:00Z', protocolVersion: '1', signerId: 'runtime:1' });
   const transfer = runtime.recordCompetencyEvidence(session.id, { primitiveId: 'p2', assessmentId: 'assessment:1', contextId: 'ctx:transfer', evidenceClass: 'behavioral', evidenceArtifactIds: ['artifact:transfer'], metrics: { performance: 0.86 }, observedAt: '2026-08-31T14:00:00Z', protocolVersion: '1', signerId: 'runtime:1' });
+
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  runtime.registerEvidenceKey({ keyId: 'key:runtime:1', signerId: 'runtime:1', publicKeyPem, status: 'active', validFrom: '2026-08-01T00:00:00Z' });
+  runtime.attestations.signRecord(baseline, 'key:runtime:1', privateKeyPem, '2026-08-30T14:00:01Z');
+  runtime.attestations.signRecord(transfer, 'key:runtime:1', privateKeyPem, '2026-08-31T14:00:01Z');
+
   const scores = { performance: 0.85, retention: 0.8, transfer: 0.8, independence: 0.9, automaticity: 0.7, 'error-recovery': 0.75 } as const;
   const certificate = runtime.verifyCompetency('learner:1', 'skill:assembly', '1.0.0', 'assessment:1', [
     { learnerId: 'learner:1', skillId: 'skill:assembly', skillVersion: '1.0.0', assessmentId: 'assessment:1', contextId: 'ctx:baseline', runtimeId: session.runtimeId, performedAt: '2026-08-30T14:00:00Z', delayedFromTrainingMs: 86_400_000, scores, assistanceUsed: false, evidenceIds: [baseline.id], protocolVersion: '1' },
