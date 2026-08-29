@@ -28,7 +28,7 @@ export class PostgresCompetencyEvidenceStore {
       const id = input.id ?? randomUUID();
       const duplicate = await client.query('SELECT id FROM cognified_competency_evidence WHERE id=$1', [id]);
       if (duplicate.rowCount) throw new Error(`Duplicate competency evidence id: ${id}`);
-      const head = await client.query('SELECT hash FROM cognified_competency_evidence ORDER BY created_at DESC,id DESC LIMIT 1');
+      const head = await client.query('SELECT hash FROM cognified_competency_evidence ORDER BY evidence_sequence DESC LIMIT 1');
       const previousHash = head.rows[0]?.hash ?? 'GENESIS';
       const observedAt = new Date(input.observedAt).toISOString();
       const base = { ...structuredClone(input), id, observedAt, previousHash };
@@ -56,21 +56,30 @@ export class PostgresCompetencyEvidenceStore {
     if (input.skillVersion) add('skill_version =', input.skillVersion);
     if (input.primitiveId) add('primitive_id =', input.primitiveId);
     if (input.contextId) add('context_id =', input.contextId);
-    const result = await this.pool.query(`SELECT * FROM cognified_competency_evidence ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''} ORDER BY created_at,id`, values);
+    const result = await this.pool.query(`SELECT * FROM cognified_competency_evidence ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''} ORDER BY evidence_sequence`, values);
     return result.rows.map(this.rowToRecord);
   }
 
-  async verifyChain(): Promise<boolean> {
-    const result = await this.pool.query('SELECT * FROM cognified_competency_evidence ORDER BY created_at,id');
+  async verifyChain(batchSize = 1000): Promise<boolean> {
+    if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 10_000) throw new Error('batchSize must be between 1 and 10000');
+    let cursor = 0n;
     let previousHash = 'GENESIS';
-    for (const row of result.rows) {
-      const record = this.rowToRecord(row);
-      if (record.previousHash !== previousHash) return false;
-      const { hash, ...base } = record;
-      if (createHash('sha256').update(stable(base)).digest('hex') !== hash) return false;
-      previousHash = hash;
+    for (;;) {
+      const result = await this.pool.query(
+        `SELECT * FROM cognified_competency_evidence WHERE evidence_sequence > $1::bigint ORDER BY evidence_sequence LIMIT $2`,
+        [cursor.toString(), batchSize],
+      );
+      if (!result.rowCount) return true;
+      for (const row of result.rows) {
+        const record = this.rowToRecord(row);
+        if (record.previousHash !== previousHash) return false;
+        const { hash, ...base } = record;
+        if (createHash('sha256').update(stable(base)).digest('hex') !== hash) return false;
+        previousHash = hash;
+      }
+      cursor = BigInt(result.rows[result.rows.length - 1].evidence_sequence);
+      if (result.rowCount < batchSize) return true;
     }
-    return true;
   }
 
   private validate(input: UnsignedCompetencyEvidence): void {
