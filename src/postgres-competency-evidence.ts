@@ -47,6 +47,12 @@ export class PostgresCompetencyEvidenceStore {
     } finally { client.release(); }
   }
 
+  async require(id: string): Promise<CompetencyEvidenceRecord> {
+    const result = await this.pool.query('SELECT * FROM cognified_competency_evidence WHERE id=$1', [id]);
+    if (!result.rowCount) throw new Error(`Unknown competency evidence: ${id}`);
+    return this.rowToRecord(result.rows[0]);
+  }
+
   async query(input: { learnerId?: string; skillId?: string; skillVersion?: string; primitiveId?: string; contextId?: string }): Promise<CompetencyEvidenceRecord[]> {
     const clauses: string[] = [];
     const values: unknown[] = [];
