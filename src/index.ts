@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './compiler.js';
 export * from './learning-engine.js';
+export * from './motor-learning.js';
 export * from './scoring.js';
 export * from './json-store.js';
 export * from './repository.js';
