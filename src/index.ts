@@ -10,6 +10,8 @@ export * from './transfer-verifier.js';
 export * from './runtime-registry.js';
 export * from './competency-evidence.js';
 export * from './postgres-competency-evidence.js';
+export * from './competency-runtime.js';
+export * from './outcome-benchmark.js';
 export * from './scoring.js';
 export * from './json-store.js';
 export * from './repository.js';
