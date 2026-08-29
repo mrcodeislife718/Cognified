@@ -12,7 +12,7 @@
     "start": "node dist/cli.js",
     "serve": "node dist/cli.js serve",
     "dev": "node --experimental-strip-types src/cli.ts",
-    "test": "npm run build && node --test dist/*.test.js",
+    "test": "npm run build && node --test --test-concurrency=1 dist/*.test.js",
     "check": "npm test"
   },
   "engines": { "node": ">=22.6" },
