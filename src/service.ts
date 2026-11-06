@@ -1,5 +1,6 @@
 import { SkillGraphCompiler, type RawLearningSource } from './compiler.js';
 import { LearningEngine } from './learning-engine.js';
+import { AdaptivePacingController, type ComfortReport } from './adaptive-pacing.js';
 import { CompetencyScorer } from './scoring.js';
 import { CognifiedRepository } from './repository.js';
 import { validateGraph } from './package-validator.js';
@@ -11,6 +12,7 @@ export class CognifiedService {
     private readonly compiler = new SkillGraphCompiler(),
     private readonly engine = new LearningEngine(),
     private readonly scorer = new CompetencyScorer(),
+    private readonly pacer = new AdaptivePacingController(),
   ) {}
 
   async createSkill(title: string, sources: RawLearningSource[]) {
@@ -29,7 +31,7 @@ export class CognifiedService {
     const existing = await this.repository.getLearnerState(learnerId, skillId);
     const state = existing ? this.engine.beginSession(existing) : this.engine.createState(learnerId, graph);
     await this.repository.saveLearnerState(state);
-    return { sessionId: state.activeSessionId, state, experience: this.engine.next(graph, state) };
+    return { sessionId: state.activeSessionId, state, experience: this.engine.next(graph, state), pacing: this.pacer.beginSession(state.activeSessionId) };
   }
 
   async recordEvent(event: LearningEvent) {
@@ -45,6 +47,7 @@ export class CognifiedService {
       const events = await this.repository.getEvents();
       return {
         duplicate: true,
+        pacing: this.pacer.inspect(event.sessionId),
         state,
         nextExperience: this.engine.next(graph, state),
         competency: this.scorer.score(event.learnerId, event.skillId, events, graph),
@@ -56,9 +59,16 @@ export class CognifiedService {
     if (append.inserted) await this.repository.saveLearnerState(nextState);
 
     const persistedState = append.inserted ? nextState : state;
+    const pacing = append.inserted
+      ? this.pacer.step(event.sessionId, {
+        timestampMs: Date.now(),
+        feedback: { correct: event.correct, responseMs: event.responseMs, assistanceUsed: event.assistanceUsed },
+      })
+      : this.pacer.inspect(event.sessionId);
     const events = await this.repository.getEvents();
     return {
       duplicate: !append.inserted,
+      pacing,
       state: persistedState,
       nextExperience: this.engine.next(graph, persistedState),
       competency: this.scorer.score(event.learnerId, event.skillId, events, graph),
@@ -68,6 +78,20 @@ export class CognifiedService {
   async getCompetency(learnerId: string, skillId: string) {
     const graph = await this.requireGraph(skillId);
     return this.scorer.score(learnerId, skillId, await this.repository.getEvents(), graph);
+  }
+
+  /** Comfort reports require an active session and never mutate competency evidence. */
+  async reportComfort(input: {
+    learnerId: string; skillId: string; sessionId: string;
+    comfort: ComfortReport; resume?: boolean;
+  }) {
+    const state = await this.repository.getLearnerState(input.learnerId, input.skillId);
+    if (!state || state.activeSessionId !== input.sessionId) {
+      throw new Error('Unknown or inactive learner session');
+    }
+    return this.pacer.step(input.sessionId, {
+      timestampMs: Date.now(), comfort: input.comfort, resume: input.resume,
+    });
   }
 
   private async requireGraph(skillId: string) {
