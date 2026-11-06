@@ -1,6 +1,41 @@
 const $ = (id) => document.getElementById(id);
 let currentExperience = null;
 let currentSessionId = null;
+let currentPacing = null;
+let demoTimer = null;
+
+function stopDemo() {
+  if (demoTimer !== null) clearTimeout(demoTimer);
+  demoTimer = null;
+}
+
+function renderPacing(pacing) {
+  currentPacing = pacing;
+  if (!pacing) return;
+  $('pacingStatus').textContent = pacing.mode === 'paused'
+    ? 'Simulation paused — explicit user resume required'
+    : 'Presentation rate: ' + pacing.presentationRate.toFixed(2) + '× · ' + pacing.reason;
+  $('resumeDemo').disabled = pacing.mode !== 'paused';
+  if (pacing.mode === 'paused') stopDemo();
+}
+
+function playDemo() {
+  stopDemo();
+  if (!currentExperience || !currentPacing || currentPacing.mode !== 'running') return;
+  const chunks = currentExperience.prompt.split(/(?<=[.!?])\s+|,\s+/).filter(Boolean);
+  let index = 0;
+  const showNext = () => {
+    if (!currentPacing || currentPacing.mode !== 'running') return;
+    $('demoStep').textContent = chunks[index] || '';
+    index += 1;
+    if (index < chunks.length) {
+      // Smooth narrative stepping; never frequency flashing or strobing.
+      demoTimer = setTimeout(showNext, Math.max(1000, 2400 / currentPacing.presentationRate));
+    } else demoTimer = null;
+  };
+  showNext();
+}
+
 
 function show(value) {
   $('log').textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -18,6 +53,8 @@ async function api(path, options = {}) {
 
 function renderExperience(experience) {
   currentExperience = experience;
+  stopDemo();
+  $('demoStep').textContent = 'Select Play demonstration to step through the learning prompt.';
   $('experienceSection').hidden = !experience;
   if (!experience) return;
   $('objective').textContent = experience.objective;
@@ -67,6 +104,7 @@ $('start').addEventListener('click', async () => {
     const skill = encodeURIComponent($('skillId').value);
     const session = await api(`/learners/${learner}/skills/${skill}/session`, { method: 'POST' });
     currentSessionId = session.sessionId;
+    renderPacing(session.pacing);
     renderExperience(session.experience);
     show(session);
   } catch (error) {
@@ -92,6 +130,7 @@ $('submit').addEventListener('click', async () => {
         assistanceUsed: $('assistance').checked,
       }),
     });
+    renderPacing(result.pacing);
     renderScore(result.competency);
     renderExperience(result.nextExperience);
     show(result);
@@ -112,3 +151,38 @@ $('xr').addEventListener('click', async () => {
     show(error.message);
   }
 });
+
+$('playDemo').addEventListener('click', playDemo);
+$('pauseDemo').addEventListener('click', async () => {
+  stopDemo();
+  await reportComfort('stop');
+});
+$('resumeDemo').addEventListener('click', async () => {
+  await reportComfort('ok', true);
+});
+$('strainDemo').addEventListener('click', async () => {
+  await reportComfort('strained');
+});
+$('nauseaDemo').addEventListener('click', async () => {
+  stopDemo();
+  await reportComfort('nauseated');
+});
+
+async function reportComfort(comfort, resume = false) {
+  if (!currentSessionId) return show('Start a session first.');
+  try {
+    const pacing = await api('/pacing/comfort', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: currentSessionId,
+        learnerId: $('learnerId').value,
+        skillId: $('skillId').value,
+        comfort, resume,
+      }),
+    });
+    renderPacing(pacing);
+    show(pacing);
+  } catch (error) {
+    show(error.message);
+  }
+}
