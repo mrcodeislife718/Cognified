@@ -24,3 +24,4 @@ export * from './runtime-contract.js';
 export * from './service.js';
 export * from './server.js';
 export * from './adaptive-pacing.js';
+export * from './pacing-sensor-adapter.js';
