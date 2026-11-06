@@ -54,6 +54,22 @@ export function startServer(port = Number(process.env.PORT ?? 8787)) {
         return send(res, 200, await service.startSession(decodeURIComponent(sessionMatch[1]), decodeURIComponent(sessionMatch[2])));
       }
 
+      if (req.method === 'POST' && url.pathname === '/pacing/comfort') {
+        const input = await body(req) as {
+          sessionId?: string; learnerId?: string; skillId?: string;
+          comfort?: 'ok' | 'strained' | 'nauseated' | 'stop'; resume?: boolean;
+        };
+        if (!input.sessionId || !input.learnerId || !input.skillId || !input.comfort ||
+          !['ok', 'strained', 'nauseated', 'stop'].includes(input.comfort) ||
+          (input.resume !== undefined && typeof input.resume !== 'boolean')) {
+          return send(res, 400, { error: 'active session identity and valid comfort report required' });
+        }
+        return send(res, 200, await service.reportComfort({
+          sessionId: input.sessionId, learnerId: input.learnerId,
+          skillId: input.skillId, comfort: input.comfort, resume: input.resume,
+        }));
+      }
+
       if (req.method === 'POST' && url.pathname === '/events') {
         const input = await body(req) as Partial<LearningEvent>;
         const required = ['sessionId', 'learnerId', 'skillId', 'nodeId', 'kind', 'correct', 'responseMs', 'confidence', 'assistanceUsed'] as const;
